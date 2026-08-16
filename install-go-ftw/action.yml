@@ -1,0 +1,39 @@
+---
+name: install-go-ftw
+description: Downloads the go-ftw binary for the runner's architecture, with retries
+
+inputs:
+  version:
+    description: go-ftw release to install, with or without the leading `v`
+    required: false
+    # renovate: datasource=github-releases depName=coreruleset/go-ftw
+    default: '2.5.0'
+  destination:
+    description: Directory to extract the `ftw` binary into
+    required: false
+    default: '.'
+  github_token:
+    description: Token used to download the release
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  path:
+    description: Path to the extracted `ftw` binary
+    value: ${{ steps.install.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install go-ftw
+      id: install
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        VERSION: ${{ inputs.version }}
+        DESTINATION: ${{ inputs.destination }}
+      run: |
+        set -euo pipefail
+        ftw_path=$("$GITHUB_ACTION_PATH/install.sh" "$VERSION" "$DESTINATION")
+        echo "path=$ftw_path" >> "$GITHUB_OUTPUT"
+        "$ftw_path" version

@@ -1,0 +1,28 @@
+# This file is not centralized across the org. This configuration file is specific to this repo.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Git style
+      - id: check-added-large-files # prevents giant files from being committed.
+      - id: forbid-new-submodules # prevents addition of new git submodules.
+      - id: no-commit-to-branch # don't commit to branch
+
+      # Common errors
+      - id: trailing-whitespace # trims trailing whitespace.
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer # ensures that a file is either empty, or ends with one newline.
+      - id: check-merge-conflict # checks for files that contain merge conflict strings.
+      - id: check-executables-have-shebangs # ensures that (non-binary) executables have a shebang.
+
+      # Cross platform
+      - id: check-case-conflict # checks for files that would conflict in case-insensitive filesystems.
+      - id: mixed-line-ending # replaces or checks mixed line ending.
+        args: [--fix=lf]
+
+      # check yaml and json
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: pretty-format-json

@@ -1,0 +1,89 @@
+---
+# Reusable workflow: owns the matrix and the CRS LTS lookup, which a composite
+# action cannot express. The per-backend work lives in ../../crs-plugin-test.
+name: CRS plugin integration tests
+
+on:                    # yamllint disable-line rule:truthy
+  workflow_call:
+    inputs:
+      crs-config:
+        description: Extra directives appended to crs-setup.conf before the server starts
+        required: false
+        type: string
+      backends:
+        description: JSON array of backends to test against
+        required: false
+        type: string
+        default: '["apache", "nginx"]'
+      go-ftw-version:
+        description: go-ftw release to run the tests with
+        required: false
+        type: string
+        # renovate: datasource=github-releases depName=coreruleset/go-ftw
+        default: '2.5.0'
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-crs-refs:
+    runs-on: ubuntu-latest
+    outputs:
+      refs: ${{ steps.resolve.outputs.refs }}
+    steps:
+      # job.workflow_sha is this workflow's own commit, so the scripts always
+      # match the ref the caller pinned
+      - name: Check out the actions repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          persist-credentials: false
+
+      - name: Resolve the current LTS tag
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          lts=$(./crs-plugin-test/resolve-lts.sh)
+          echo "Resolved LTS tag: $lts"
+          printf 'refs=["main","%s"]\n' "$lts" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: resolve-crs-refs
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        backend: ${{ fromJSON(inputs.backends) }}
+        crs-ref: ${{ fromJSON(needs.resolve-crs-refs.outputs.refs) }}
+
+    steps:
+      - name: Check out the plugin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check out the actions repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .crs-actions
+          persist-credentials: false
+
+      - name: Run plugin tests
+        uses: ./.crs-actions/crs-plugin-test
+        with:
+          backend: ${{ matrix.backend }}
+          crs-ref: ${{ matrix.crs-ref }}
+          crs-config: ${{ inputs.crs-config }}
+          go-ftw-version: ${{ inputs.go-ftw-version }}
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
+        with:
+          name: ${{ matrix.backend }}-${{ matrix.crs-ref }}-logs
+          path: tests/logs/${{ matrix.backend }}/

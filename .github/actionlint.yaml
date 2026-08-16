@@ -1,0 +1,10 @@
+---
+paths:
+  .github/workflows/crs-plugin-*.yaml:
+    ignore:
+      # job.workflow_repository / job.workflow_sha let a reusable workflow check
+      # out its own source at the ref the caller pinned. Both are documented in
+      # the job context, with an example doing exactly this, but actionlint's
+      # bundled context schema has not caught up:
+      # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts
+      - 'property "workflow_(repository|sha)" is not defined in object type'

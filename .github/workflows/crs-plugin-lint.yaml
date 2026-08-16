@@ -1,0 +1,47 @@
+---
+# Reusable workflow wrapping ../../crs-plugin-lint, so plugin repositories keep
+# a one line caller.
+name: CRS plugin lint
+
+on:                    # yamllint disable-line rule:truthy
+  workflow_call:
+    inputs:
+      plugin-dir:
+        description: Directory holding the plugin's `.conf` rule files
+        required: false
+        type: string
+        default: plugins
+      test-dir:
+        description: Directory holding the go-ftw regression tests
+        required: false
+        type: string
+        default: tests/regression
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the plugin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+        with:
+          persist-credentials: false
+
+      # job.workflow_sha is this workflow's own commit, so the action always
+      # matches the ref the caller pinned
+      - name: Check out the actions repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .crs-actions
+          persist-credentials: false
+
+      - name: Lint the plugin
+        uses: ./.crs-actions/crs-plugin-lint
+        with:
+          plugin-dir: ${{ inputs.plugin-dir }}
+          test-dir: ${{ inputs.test-dir }}

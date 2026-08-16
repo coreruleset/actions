@@ -1,0 +1,87 @@
+---
+name: crs-plugin-test
+description: Runs a CRS plugin's go-ftw regression tests against one backend and one CRS ref
+
+inputs:
+  backend:
+    description: Web server to test against, `apache` or `nginx`
+    required: false
+    default: apache
+  crs-ref:
+    description: Ref of coreruleset/coreruleset to test the plugin against
+    required: false
+    default: main
+  crs-config:
+    description: Extra directives appended to crs-setup.conf before the server starts
+    required: false
+    default: ''
+  test-dir:
+    description: Directory holding the go-ftw regression tests
+    required: false
+    default: tests/regression
+  go-ftw-version:
+    description: go-ftw release to run the tests with
+    required: false
+    # renovate: datasource=github-releases depName=coreruleset/go-ftw
+    default: '2.5.0'
+  timeout:
+    description: Seconds to wait for the backend to answer before failing
+    required: false
+    default: '60'
+  github_token:
+    description: Token used to download the go-ftw release
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check out CRS (${{ inputs.crs-ref }})
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
+      with:
+        repository: coreruleset/coreruleset
+        ref: ${{ inputs.crs-ref }}
+        path: crs
+        persist-credentials: false
+
+    - name: Install go-ftw
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        GO_FTW_VERSION: ${{ inputs.go-ftw-version }}
+      # the sibling action's script, not `uses:`, because a relative `uses:` in a
+      # composite action resolves against the caller's workspace
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/../install-go-ftw/install.sh" "$GO_FTW_VERSION" . >/dev/null
+
+    - name: Start ${{ inputs.backend }}
+      shell: bash
+      env:
+        BACKEND: ${{ inputs.backend }}
+        EXTRA_CONF: ${{ inputs.crs-config }}
+        TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/prepare.sh" "$BACKEND" "$GITHUB_ACTION_PATH/docker-compose.yml" "$EXTRA_CONF"
+        docker compose -f tests/integration/docker-compose.yml up -d "$BACKEND"
+        "$GITHUB_ACTION_PATH/wait-for-backend.sh" "$BACKEND" tests/integration/docker-compose.yml "$TIMEOUT"
+
+    - name: Run plugin tests
+      shell: bash
+      env:
+        FTW_LOGFILE: tests/logs/${{ inputs.backend }}/error.log
+        TEST_DIR: ${{ inputs.test-dir }}
+      run: |
+        set -euo pipefail
+        ./ftw check -d "$TEST_DIR"
+        ./ftw run -d "$TEST_DIR" --show-failures-only
+
+    - name: Tear down
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -f tests/integration/docker-compose.yml ]; then
+          docker compose -f tests/integration/docker-compose.yml down -t 0
+        fi

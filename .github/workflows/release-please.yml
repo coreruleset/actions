@@ -1,0 +1,38 @@
+---
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run — preview the release PR without creating or modifying anything"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write        # create tags and releases
+      pull-requests: write   # open and update the release PR
+      issues: write          # label the release PR
+
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # pin@v5.0.0
+        with:
+          # GITHUB_TOKEN does not trigger other workflows, so the release PR
+          # runs no checks. That is acceptable here because the release PR only
+          # edits CHANGELOG.md and .release-please-manifest.json. Swap in a
+          # GitHub App token if that stops being true.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+          skip-github-pull-request: ${{ inputs.dry-run == true }}
+          skip-github-release: ${{ inputs.dry-run == true }}

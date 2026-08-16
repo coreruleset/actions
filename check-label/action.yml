@@ -1,0 +1,31 @@
+---
+name: check-label
+description: Fails the job unless the pull request carries one of the required labels
+
+inputs:
+  one_of:
+    description: Comma separated list of labels; the pull request must carry at least one
+    required: true
+  prefix_mode:
+    description: Match a label that starts with one of the required strings instead of matching it exactly
+    required: false
+    default: 'false'
+  github_token:
+    description: 'Token used to read the pull request labels; needs `pull-requests: read` permission'
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check labels
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        ONE_OF: ${{ inputs.one_of }}
+        PREFIX_MODE: ${{ inputs.prefix_mode }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/check.sh" "$PR_NUMBER" "$REPO" "$PREFIX_MODE" "$ONE_OF"
