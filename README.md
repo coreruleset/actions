@@ -15,6 +15,9 @@ Two reusable workflows wrap the plugin actions so plugin repositories keep a one
 [`crs-plugin-lint.yaml`](.github/workflows/crs-plugin-lint.yaml). They exist because a matrix and a
 second job cannot go in a composite action — see [Reusable workflows](#reusable-workflows) below.
 
+Status of shared-actions work across the org, the survey behind it, and the plugin-repository
+migration checklist: [`docs/centralization.md`](docs/centralization.md).
+
 ## Migrating from crs-plugin-test-action
 
 `crs-plugin-test` and `crs-plugin-lint` are copies of
