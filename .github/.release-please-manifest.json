@@ -1,6 +1,6 @@
 {
-  "check-label": "0.0.0",
-  "crs-plugin-lint": "3.0.2",
-  "crs-plugin-test": "3.0.2",
-  "install-go-ftw": "0.0.0"
+  "check-label": "1.0.0",
+  "crs-plugin-lint": "4.0.0",
+  "crs-plugin-test": "4.0.0",
+  "install-go-ftw": "1.0.0"
 }
